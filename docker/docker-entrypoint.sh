@@ -3,6 +3,7 @@
 FIRST_RUN=1
 MAIN_PROC_RUN=1
 BIND_CONFIG_FILE="/etc/named/named.conf"
+BIND_CONFIG_FILE_BCK="/etc/named.conf"
 
 trap "docker_stop" SIGINT SIGTERM
 
@@ -14,24 +15,35 @@ function docker_stop {
 }
 
 function check_variables(){
+    cat<<-EOF > $BIND_CONFIG_FILE
+options {
+  listen-on port 53   { any; };
+  pid-file   "/run/named/named.pid";
+EOF
     env | grep BIND_ | while read BIND_VAR; do
-        
         VAR=$(echo "${BIND_VAR,,}" | awk '{split($0,a,"="); print a[1]}' | sed "s%bind_%%g" | sed "s%_%-%g")
         VALUE=$(echo "$BIND_VAR" | awk '{split($0,a,"="); print a[2]}')
-        VERIFY_VARIABLE=$(cat $BIND_CONFIG_FILE | grep $VAR -o | awk '{split($0,a,"="); print a[1]}')
-        
-        if [ "${VERIFY_VARIABLE}" != "listen-on" ] && [ "${VERIFY_VARIABLE}" != "pid-file" ] && [ "${VAR}" != "forward" ]; then
-            if [ "${VERIFY_VARIABLE}" == "allow-query" ] || [ "${VERIFY_VARIABLE}" == "forwarders" ]; then
-                sed -i "s%$VAR.*%$VAR\t\t\t\t{$VALUE};%g" $BIND_CONFIG_FILE
-            elif [ -n "${VERIFY_VARIABLE}" ]; then
-                sed -i "s%$VAR.*%$VAR\t\t\t\t$VALUE;%g" $BIND_CONFIG_FILE
-            else
-                echo "[BIND $(date +'%Y-%m-%d %R')] Variable $VAR isn't valid"
-            fi
-        elif [ "${VAR}" == "forward" ]; then
-            sed -i "s%$VAR.*%$VAR\t\t\t\t$VALUE;%g" $BIND_CONFIG_FILE
+        VERIFY_VARIABLE=$(cat $BIND_CONFIG_FILE_BCK | grep $VAR -w)
+
+        if [ -n "${VERIFY_VARIABLE}" ]; then
+            echo "  $VAR   $VALUE;" >> $BIND_CONFIG_FILE
+        else
+            echo "[Bind $(date)] Variable isn't valid"
         fi
     done
+
+cat<<-EOF >> $BIND_CONFIG_FILE
+};
+view "internal-view" {
+    recursion yes;
+    match-clients { 127.0.0.1/32; };
+    zone "." IN {
+    type hint;
+    file "/var/named/named.ca";
+    };
+};
+include "/var/named/views/views.conf";
+EOF
 
     if [ ! -f "/var/named/views/views.conf" ]; then
         touch /var/named/views/views.conf
@@ -56,10 +68,9 @@ function check_variables(){
 
 if [ ! -f /etc/named/named.conf ]; then
     mkdir -p /etc/named/
-    cp /etc/named.conf /etc/named/named.conf
+    check_variables
 fi
 
-check_variables
 echo "[BIND $(date +'%Y-%m-%d %R')] Starting Bind"
 while [ ${MAIN_PROC_RUN} -eq 1 ]; do
     if [ "${FIRST_RUN}" -ne 0 ] ; then
