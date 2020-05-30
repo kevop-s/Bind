@@ -17,8 +17,8 @@ view "external-zone" {
 EOF
 
 # Creamos el archivo con los registros correspondientes a la zona
-cat<<-EOF > /var/containers/$$BIND_CONTAINER/var/named/zones/kevops.com.zone
-$TTL    3600
+cat<<-EOF > /var/containers/$BIND_CONTAINER/var/named/zones/kevops.com.zone
+\$TTL    3600
 @       IN      SOA     kevops.com.  . (
                 1      ; Serial
                 10800   ; Refresh
@@ -28,5 +28,5 @@ $TTL    3600
                 IN NS  ns0
                 IN A   1.2.3.4
 ns0             IN A   1.2.3.4
-example         IN A   1.2.3.5
+ejemplo         IN A   1.2.3.5
 EOF
