@@ -39,6 +39,8 @@ Realizamos el despliegue del contenedor.
 docker run -itd --name $BIND_CONTAINER \
     -p 53:53/tcp \
     -p 53:53/udp \
+    --health-cmd='/sbin/docker-health-check.sh' \
+    --health-interval=10s \
     -h $BIND_CONTAINER.$BIND_DOMAIN \
     -v /etc/localtime:/etc/localtime:ro \
     -v /usr/share/zoneinfo:/usr/share/zoneinfo:ro \
@@ -46,7 +48,48 @@ docker run -itd --name $BIND_CONTAINER \
     -v /var/containers/$BIND_CONTAINER/var/named/zones/:/var/named/zones/:z \
     -v /var/containers/$BIND_CONTAINER/etc/named:/etc/named:z \
     -e "TZ=America/Mexico_City" \
+    -e "BIND_DIRECTORY=\"/var/named\"" \
+    -e "BIND_DUMP_FILE=\"/var/named/data/cache_dump.db\"" \
+    -e "BIND_STATISTICS_FILE=\"/var/named/data/named_stats.txt\"" \
+    -e "BIND_MEMSTATISTICS_FILE=\"/var/named/data/named_mem_stats.txt\"" \
+    -e "BIND_ALLOW_QUERY={ any;}" \
+    -e "BIND_RECURSION=yes" \
+    -e "BIND_DNSSEC_ENABLE=yes" \
+    -e "BIND_DNSSEC_VALIDATION=yes" \
+    -e "BIND_DNSSEC_LOOKASIDE=auto" \
+    -e "BIND_BINDKEYS_FILE=\"/etc/named.iscdlv.key\"" \
+    -e "BIND_MANAGED_KEYS_DIRECTORY=\"/var/named/dynamic\"" \
+    -e "BIND_FORWARDERS={8.8.8.8; 8.8.4.4;}" \
+    -e "BIND_AUTH_NXDOMAIN=no" \
+    -e "BIND_SESSION_KEYFILE=\"/run/named/session.key\"" \
+    -e "BIND_FORWARD=only" \
+    -e "BIND_NOTIFY=yes" \
     docker.io/kevopsoficial/bind
+```
+
+### Variables de entorno
+
+Las variables de entorno configuran los valores de la sección **options** del archivo [named.conf](https://raw.githubusercontent.com/kevop-s/Bind/master/docker/named.conf).
+
+Para configurar alguno de los valores, con excepción de **listen-on** y **pid-file**, se utiliza la siguiente sintáxis.
+
+* Las variables de entorno pueden estar en mayúsculas o minúsculas.
+* El valor de las variables que apuntan a una ruta debera situarse entre comillas.
+* Las variables deben iniciar con el prefijo **BIND_**
+* Los guiones de la opción a modificar deberán ser sustituidos por guiones bajo.
+
+E.g.
+Para configurar la opción **directory** la variable de entorno deberá lucir de la siguiente forma:
+
+```
+BIND_DIRECTORY="/var/named"
+```
+
+E.g.
+Para configurar la opción **forwarders** la variable de entorno deberá lucir de la siguiente forma:
+
+```
+BIND_FORWARDERS={8.8.8.8; 8.8.4.4;}
 ```
 
 ## Creación de Zona
@@ -76,7 +119,7 @@ $TTL    3600
                 10800   ; Refresh
                 3600    ; Retry
                 3600    ; Expire
-                3600)   ; Minimum
+                1)      ; Minimum
                 IN NS  ns0
                 IN A   1.2.3.4;
 ns0             IN A   1.2.3.4
