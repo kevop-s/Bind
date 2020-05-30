@@ -5,6 +5,14 @@ MAIN_PROC_RUN=1
 BIND_CONFIG_FILE="/etc/named/named.conf"
 BIND_CONFIG_FILE_BCK="/etc/named.conf"
 
+if [ -z "${BIND_KEY_ALGORITHM}" ]; then
+        BIND_KEY_ALGORITHM="hmac-md5"
+    fi
+
+if [ -z "${BIND_CPU}" ]; then
+    BIND_CPU=1
+fi
+
 trap "docker_stop" SIGINT SIGTERM
 
 function docker_stop {
@@ -47,14 +55,6 @@ EOF
 
     if [ ! -f "/var/named/views/views.conf" ]; then
         touch /var/named/views/views.conf
-    fi
-    
-    if [ -z "${BIND_KEY_ALGORITHM}" ]; then
-        BIND_KEY_ALGORITHM="hmac-md5"
-    fi
-
-    if [ -z "${BIND_CPU}" ]; then
-        BIND_CPU=1
     fi
 
     HOSTNAME=$(cat /etc/hostname | awk -F. '{print $1}')
