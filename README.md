@@ -92,6 +92,10 @@ Para configurar la opción **forwarders** la variable de entorno deberá lucir d
 BIND_FORWARDERS={8.8.8.8; 8.8.4.4;}
 ```
 
+### Configuración named.conf
+
+La imagen también admite la creación de un archivo de configuración previamente diseñado, dicho archivo deberá situarse en el directorio **/var/containers/$BIND_CONTAINER/etc/named** con el nombre de **named.conf** previo al despliegue del contenedor, caso contrario el despliegue deberá realizarse integrando las variables de entorno señaladas anteriormente.
+
 ## Creación de Zona
 
 Primero creamos la vista correspondiente a la zona que deseamos dar de alta, en el archivo **/var/containers/$BIND_CONTAINER/var/named/views/views.conf**.
